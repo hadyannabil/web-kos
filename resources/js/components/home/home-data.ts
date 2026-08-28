@@ -1,11 +1,3 @@
-export type Room = {
-    name: string;
-    image: string;
-    imageAlt: string;
-    features: string[];
-    price: string;
-};
-
 export type Testimonial = {
     name: string;
     role: string;
@@ -19,30 +11,6 @@ export const homeImages = {
     hero: 'https://images.unsplash.com/photo-1600047509807-ba8f99d2cdde?auto=format&fit=crop&w=1800&q=85',
     cta: 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?auto=format&fit=crop&w=900&q=80',
 };
-
-export const rooms: Room[] = [
-    {
-        name: 'Kamar Standard',
-        image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=900&q=80',
-        imageAlt: 'Contoh interior kamar Standard KosKita Residence',
-        features: ['Kasur & lemari', 'Meja belajar', 'Kipas angin'],
-        price: 'Rp 1.250.000',
-    },
-    {
-        name: 'Kamar Premium',
-        image: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=900&q=80',
-        imageAlt: 'Contoh interior kamar Premium KosKita Residence',
-        features: ['Kasur & lemari', 'Meja belajar', 'AC'],
-        price: 'Rp 1.750.000',
-    },
-    {
-        name: 'Kamar Deluxe',
-        image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=900&q=80',
-        imageAlt: 'Contoh interior kamar Deluxe KosKita Residence',
-        features: ['Kasur & lemari', 'AC', 'Kamar mandi dalam'],
-        price: 'Rp 2.250.000',
-    },
-];
 
 export const testimonials: Testimonial[] = [
     {

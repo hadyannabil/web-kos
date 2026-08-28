@@ -11,20 +11,20 @@ import {
 import { BrandLogo } from '@/components/home/brand-logo';
 
 const quickLinks = [
-    { label: 'Kamar', href: '#kamar' },
-    { label: 'Fasilitas', href: '#fasilitas' },
-    { label: 'Lokasi', href: '#lokasi' },
-    { label: 'Testimoni', href: '#testimoni' },
-    { label: 'FAQ', href: '#faq' },
+    { label: 'Kamar', href: '/#kamar' },
+    { label: 'Fasilitas', href: '/#fasilitas' },
+    { label: 'Lokasi', href: '/#lokasi' },
+    { label: 'Testimoni', href: '/#testimoni' },
+    { label: 'FAQ', href: '/#faq' },
 ];
 
 export function Footer() {
     return (
-        <footer id="kontak" className="border-t border-blue-100 bg-[#f3f8ff]">
+        <footer id="kontak" className="border-t border-[#DDE8D8] bg-[#F3F7F1]">
             <div className="mx-auto grid max-w-[1440px] gap-9 px-5 py-12 sm:px-8 md:grid-cols-2 lg:grid-cols-[1.2fr_1fr_0.8fr_1.2fr_0.9fr] lg:px-12">
                 <div>
                     <BrandLogo />
-                    <p className="mt-4 max-w-xs text-sm leading-6 text-[#63738f]">
+                    <p className="mt-4 max-w-xs text-sm leading-6 text-[#5F6B63]">
                         Kos nyaman, aman, dan strategis untuk mahasiswa &amp;
                         pekerja produktif.
                     </p>
@@ -54,12 +54,12 @@ export function Footer() {
                 </FooterColumn>
 
                 <FooterColumn title="Tautan Cepat">
-                    <ul className="space-y-2.5 text-sm text-[#63738f]">
+                    <ul className="space-y-2.5 text-sm text-[#5F6B63]">
                         {quickLinks.map((link) => (
                             <li key={link.href}>
                                 <a
                                     href={link.href}
-                                    className="transition hover:text-[#0769f1]"
+                                    className="transition hover:text-[#4F6F52]"
                                 >
                                     {link.label}
                                 </a>
@@ -82,7 +82,7 @@ export function Footer() {
                     </ContactLine>
                 </FooterColumn>
             </div>
-            <div className="border-t border-blue-100 px-5 py-5 text-center text-xs text-[#7b89a1]">
+            <div className="border-t border-[#DDE8D8] px-5 py-5 text-center text-xs text-[#5F6B63]">
                 © {new Date().getFullYear()} KosKita Residence. All rights
                 reserved.
             </div>
@@ -98,7 +98,7 @@ type FooterColumnProps = {
 function FooterColumn({ title, children }: FooterColumnProps) {
     return (
         <div>
-            <h2 className="mb-4 text-sm font-bold text-[#0a2864]">{title}</h2>
+            <h2 className="mb-4 text-sm font-bold text-[#1F2A24]">{title}</h2>
             {children}
         </div>
     );
@@ -113,10 +113,10 @@ type ContactLineProps = {
 function ContactLine({ icon: Icon, children, alignStart }: ContactLineProps) {
     return (
         <p
-            className={`mb-3 flex gap-2.5 text-sm leading-6 text-[#63738f] ${alignStart ? 'items-start' : 'items-center'}`}
+            className={`mb-3 flex gap-2.5 text-sm leading-6 text-[#5F6B63] ${alignStart ? 'items-start' : 'items-center'}`}
         >
             <Icon
-                className="mt-1 size-4 shrink-0 text-[#31538d]"
+                className="mt-1 size-4 shrink-0 text-[#2F4F3E]"
                 aria-hidden="true"
             />
             <span>{children}</span>
@@ -135,7 +135,7 @@ function SocialLink({ label, href, icon: Icon }: SocialLinkProps) {
         <a
             href={href}
             aria-label={label}
-            className="grid size-9 place-items-center rounded-full border border-blue-200 bg-white text-[#0769f1] transition hover:border-blue-500 hover:bg-blue-50"
+            className="grid size-9 place-items-center rounded-full border border-[#DDE8D8] bg-white text-[#4F6F52] transition hover:border-[#4F6F52] hover:bg-[#F3F7F1]"
         >
             <Icon className="size-4" aria-hidden="true" />
         </a>

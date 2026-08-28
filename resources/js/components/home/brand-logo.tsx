@@ -14,7 +14,7 @@ export function BrandLogo({ className, inverse = false }: BrandLogoProps) {
                     'grid size-10 place-items-center rounded-xl border-2',
                     inverse
                         ? 'border-white/70 bg-white/10 text-white'
-                        : 'border-[#0b6cf0] bg-blue-50 text-[#0b6cf0]',
+                        : 'border-[#4F6F52] bg-[#F3F7F1] text-[#4F6F52]',
                 )}
             >
                 <House
@@ -27,7 +27,7 @@ export function BrandLogo({ className, inverse = false }: BrandLogoProps) {
                 <span
                     className={cn(
                         'block text-lg font-bold tracking-tight',
-                        inverse ? 'text-white' : 'text-[#09245f]',
+                        inverse ? 'text-white' : 'text-[#1F2A24]',
                     )}
                 >
                     KosKita
@@ -35,7 +35,7 @@ export function BrandLogo({ className, inverse = false }: BrandLogoProps) {
                 <span
                     className={cn(
                         'mt-1 block text-xs font-semibold tracking-[0.16em]',
-                        inverse ? 'text-blue-100' : 'text-[#0b6cf0]',
+                        inverse ? 'text-[#DDE8D8]' : 'text-[#4F6F52]',
                     )}
                 >
                     RESIDENCE
