@@ -1,18 +1,25 @@
 import { Head, Link } from '@inertiajs/react';
-import {
-    ArrowLeft,
-    ArrowRight,
-    CheckCircle2,
-    ChevronRight,
-    CircleAlert,
-    Info,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronRight, CircleAlert } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { BookingStepIndicator } from '@/components/booking/booking-step-indicator';
-import { RoomStatusBadge } from '@/components/rooms/room-status-badge';
+import { BookingSuccess } from '@/components/booking/booking-success';
+import { BookingSummaryCard } from '@/components/booking/booking-summary-card';
+import { PaymentPlanSelector } from '@/components/booking/payment-plan-selector';
+import { PaymentStep } from '@/components/booking/payment-step';
 import {
-    formatRupiah,
+    CUSTOM_DURATION_VALUE,
+    MAX_BOOKING_DURATION_MONTHS,
+    MIN_BOOKING_DURATION_MONTHS,
+    calculateBookingSummary,
+    resolveDurationMonths,
+} from '@/data/booking';
+import type {
+    BookingDetails,
+    PaymentMethod,
+    PaymentPlan,
+} from '@/data/booking';
+import {
     getRoomBySlug,
     roomTypeLabels,
     stayDurationOptions,
@@ -28,16 +35,15 @@ type BookingForm = {
     whatsapp: string;
     startDate: string;
     duration: string;
+    customDuration: string;
+    paymentPlan: PaymentPlan | '';
     surveyDate: string;
     surveyTime: string;
     notes: string;
 };
 
 type BookingErrors = Partial<Record<keyof BookingForm, string>>;
-
-type BookingConfirmation = BookingForm & {
-    bookingNumber: string;
-};
+type BookingStage = 'details' | 'payment' | 'success';
 
 const initialForm: BookingForm = {
     fullName: '',
@@ -45,6 +51,8 @@ const initialForm: BookingForm = {
     whatsapp: '',
     startDate: '',
     duration: '',
+    customDuration: '',
+    paymentPlan: '',
     surveyDate: '',
     surveyTime: '',
     notes: '',
@@ -54,8 +62,10 @@ export default function BookingCreate({ slug }: BookingCreateProps) {
     const room = getRoomBySlug(slug);
     const [form, setForm] = useState<BookingForm>(initialForm);
     const [errors, setErrors] = useState<BookingErrors>({});
-    const [confirmation, setConfirmation] =
-        useState<BookingConfirmation | null>(null);
+    const [stage, setStage] = useState<BookingStage>('details');
+    const [booking, setBooking] = useState<BookingDetails | null>(null);
+    const [completedPaymentMethod, setCompletedPaymentMethod] =
+        useState<PaymentMethod | null>(null);
     const today = useMemo(() => getLocalDateInputValue(), []);
 
     if (!room || room.status !== 'available') {
@@ -90,12 +100,25 @@ export default function BookingCreate({ slug }: BookingCreateProps) {
         );
     }
 
-    const selectedDuration = Number(form.duration) || 0;
-    const estimatedCost = room.price * selectedDuration;
+    const durationMonths =
+        resolveDurationMonths(form.duration, form.customDuration) ?? 0;
+    const previewPaymentPlan = form.paymentPlan || 'monthly';
+    const previewCalculation = calculateBookingSummary({
+        monthlyPrice: room.price,
+        durationMonths,
+        paymentPlan: previewPaymentPlan,
+    });
 
-    const updateField = (field: keyof BookingForm, value: string) => {
+    const updateField = <Field extends keyof BookingForm>(
+        field: Field,
+        value: BookingForm[Field],
+    ) => {
         setForm((current) => ({ ...current, [field]: value }));
-        setErrors((current) => ({ ...current, [field]: undefined }));
+        setErrors((current) => ({
+            ...current,
+            [field]: undefined,
+            ...(field === 'duration' ? { customDuration: undefined } : {}),
+        }));
     };
 
     const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -105,8 +128,16 @@ export default function BookingCreate({ slug }: BookingCreateProps) {
             today,
             room.minimumStayMonths,
         );
+        const normalizedDuration = resolveDurationMonths(
+            form.duration,
+            form.customDuration,
+        );
 
-        if (Object.keys(validationErrors).length > 0) {
+        if (
+            Object.keys(validationErrors).length > 0 ||
+            normalizedDuration === null ||
+            !form.paymentPlan
+        ) {
             setErrors(validationErrors);
             document
                 .getElementById('booking-form-title')
@@ -116,19 +147,52 @@ export default function BookingCreate({ slug }: BookingCreateProps) {
         }
 
         setErrors({});
-        setConfirmation({
-            ...form,
+        setBooking({
             bookingNumber: `BOOK-KOS-${String(room.id).padStart(4, '0')}`,
+            fullName: form.fullName.trim(),
+            email: form.email.trim(),
+            whatsapp: form.whatsapp.trim(),
+            startDate: form.startDate,
+            durationMonths: normalizedDuration,
+            paymentPlan: form.paymentPlan,
+            surveyDate: form.surveyDate,
+            surveyTime: form.surveyTime,
+            notes: form.notes.trim(),
         });
+        setCompletedPaymentMethod(null);
+        setStage('payment');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    if (confirmation) {
+    if (stage === 'payment' && booking) {
+        return (
+            <PaymentStep
+                room={room}
+                booking={booking}
+                onBack={() => {
+                    setStage('details');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                onComplete={(paymentMethod) => {
+                    setCompletedPaymentMethod(paymentMethod);
+                    setStage('success');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+            />
+        );
+    }
+
+    if (stage === 'success' && booking && completedPaymentMethod) {
         return (
             <BookingSuccess
                 room={room}
-                confirmation={confirmation}
-                estimatedCost={room.price * Number(confirmation.duration)}
+                booking={booking}
+                calculation={calculateBookingSummary({
+                    monthlyPrice: room.price,
+                    durationMonths: booking.durationMonths,
+                    paymentPlan: booking.paymentPlan,
+                })}
+                paymentMethod={completedPaymentMethod}
             />
         );
     }
@@ -183,7 +247,7 @@ export default function BookingCreate({ slug }: BookingCreateProps) {
                         <div>
                             <h2
                                 id="booking-form-title"
-                                className="scroll-mt-24 text-2xl font-bold text-[#1F2A24]"
+                                className="scroll-mt-20 text-2xl font-bold text-[#1F2A24]"
                             >
                                 Data Pemesan
                             </h2>
@@ -340,9 +404,66 @@ export default function BookingCreate({ slug }: BookingCreateProps) {
                                                 {duration} bulan
                                             </option>
                                         ))}
+                                    <option value={CUSTOM_DURATION_VALUE}>
+                                        Durasi lainnya...
+                                    </option>
                                 </select>
                             </FormField>
+
+                            {form.duration === CUSTOM_DURATION_VALUE && (
+                                <FormField
+                                    id="custom-duration"
+                                    label="Durasi lainnya"
+                                    error={errors.customDuration}
+                                >
+                                    <div className="flex min-w-0 items-center gap-3">
+                                        <input
+                                            id="custom-duration"
+                                            type="number"
+                                            min={MIN_BOOKING_DURATION_MONTHS}
+                                            max={MAX_BOOKING_DURATION_MONTHS}
+                                            step="1"
+                                            inputMode="numeric"
+                                            value={form.customDuration}
+                                            onChange={(event) =>
+                                                updateField(
+                                                    'customDuration',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            aria-invalid={Boolean(
+                                                errors.customDuration,
+                                            )}
+                                            aria-describedby={
+                                                errors.customDuration
+                                                    ? 'custom-duration-error'
+                                                    : undefined
+                                            }
+                                            className={`${inputClass(Boolean(errors.customDuration))} min-w-0 flex-1`}
+                                            placeholder="4"
+                                        />
+                                        <span className="shrink-0 text-sm font-semibold text-[#5F6B63]">
+                                            bulan
+                                        </span>
+                                    </div>
+                                </FormField>
+                            )}
                         </div>
+
+                        {durationMonths > 0 && (
+                            <>
+                                <div className="my-7 border-t border-slate-100" />
+                                <PaymentPlanSelector
+                                    value={form.paymentPlan}
+                                    monthlyPrice={room.price}
+                                    durationMonths={durationMonths}
+                                    error={errors.paymentPlan}
+                                    onChange={(paymentPlan) =>
+                                        updateField('paymentPlan', paymentPlan)
+                                    }
+                                />
+                            </>
+                        )}
 
                         <div className="my-7 border-t border-slate-100" />
 
@@ -437,183 +558,20 @@ export default function BookingCreate({ slug }: BookingCreateProps) {
                             type="submit"
                             className="mt-7 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#4F6F52] px-6 text-sm font-bold text-white shadow-md shadow-[#4F6F52]/20 transition hover:bg-[#2F4F3E] sm:w-auto"
                         >
-                            Buat Permintaan Booking
+                            Lanjut ke Pembayaran
                             <ArrowRight className="size-4" aria-hidden="true" />
                         </button>
                     </form>
 
-                    <BookingSummary
+                    <BookingSummaryCard
                         roomName={room.name}
                         roomType={roomTypeLabels[room.type]}
-                        price={room.price}
-                        duration={selectedDuration}
-                        estimatedCost={estimatedCost}
+                        calculation={previewCalculation}
+                        paymentPlan={form.paymentPlan}
                     />
                 </div>
             </main>
         </>
-    );
-}
-
-type BookingSuccessProps = {
-    room: NonNullable<ReturnType<typeof getRoomBySlug>>;
-    confirmation: BookingConfirmation;
-    estimatedCost: number;
-};
-
-function BookingSuccess({
-    room,
-    confirmation,
-    estimatedCost,
-}: BookingSuccessProps) {
-    return (
-        <>
-            <Head title="Booking Berhasil Dibuat" />
-            <main className="mx-auto max-w-[1100px] px-4 py-8 sm:px-6 sm:py-12">
-                <BookingStepIndicator currentStep={3} />
-
-                <section className="mt-7 rounded-3xl border border-emerald-200 bg-white p-5 shadow-[0_18px_50px_rgba(79,111,82,0.1)] sm:p-8">
-                    <div className="text-center">
-                        <span className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-100 text-emerald-700">
-                            <CheckCircle2
-                                className="size-9"
-                                aria-hidden="true"
-                            />
-                        </span>
-                        <p className="mt-5 text-xs font-bold tracking-[0.16em] text-emerald-700 uppercase">
-                            {confirmation.bookingNumber}
-                        </p>
-                        <h1 className="mt-2 text-3xl font-bold text-[#1F2A24] sm:text-4xl">
-                            Permintaan booking berhasil dibuat
-                        </h1>
-                        <p className="mx-auto mt-3 max-w-2xl leading-7 text-[#5F6B63]">
-                            Simulasi booking sudah selesai. Berikut ringkasan
-                            data yang kamu masukkan.
-                        </p>
-                    </div>
-
-                    <dl className="mx-auto mt-8 grid max-w-3xl gap-px overflow-hidden rounded-2xl border border-[#DDE8D8] bg-[#DDE8D8] sm:grid-cols-2">
-                        <SummaryItem
-                            label="Nomor kamar"
-                            value={room.roomNumber}
-                        />
-                        <SummaryItem
-                            label="Tipe kamar"
-                            value={roomTypeLabels[room.type]}
-                        />
-                        <SummaryItem
-                            label="Nama pemesan"
-                            value={confirmation.fullName}
-                        />
-                        <SummaryItem
-                            label="Nomor WhatsApp"
-                            value={confirmation.whatsapp}
-                        />
-                        <SummaryItem
-                            label="Tanggal mulai"
-                            value={formatDate(confirmation.startDate)}
-                        />
-                        <SummaryItem
-                            label="Durasi"
-                            value={`${confirmation.duration} bulan`}
-                        />
-                        <SummaryItem
-                            label="Jadwal survey"
-                            value={`${formatDate(confirmation.surveyDate)}, ${confirmation.surveyTime} WIB`}
-                        />
-                        <SummaryItem
-                            label="Estimasi biaya"
-                            value={formatRupiah(estimatedCost)}
-                        />
-                    </dl>
-
-                    <div className="mx-auto mt-6 flex max-w-3xl gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-800">
-                        <Info
-                            className="mt-0.5 size-5 shrink-0"
-                            aria-hidden="true"
-                        />
-                        Data ini masih berupa simulasi dan belum tersimpan
-                        secara permanen. Tidak ada pembayaran atau data kartu
-                        yang diproses.
-                    </div>
-
-                    <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-                        <Link
-                            href="/"
-                            className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[#DDE8D8] px-6 text-sm font-bold text-[#4F6F52] transition hover:border-[#4F6F52] hover:bg-[#F3F7F1]"
-                        >
-                            Kembali ke Beranda
-                        </Link>
-                        <Link
-                            href="/kamar"
-                            className="inline-flex min-h-12 items-center justify-center rounded-xl bg-[#4F6F52] px-6 text-sm font-bold text-white transition hover:bg-[#2F4F3E]"
-                        >
-                            Lihat Kamar Lain
-                        </Link>
-                    </div>
-                </section>
-            </main>
-        </>
-    );
-}
-
-type BookingSummaryProps = {
-    roomName: string;
-    roomType: string;
-    price: number;
-    duration: number;
-    estimatedCost: number;
-};
-
-function BookingSummary({
-    roomName,
-    roomType,
-    price,
-    duration,
-    estimatedCost,
-}: BookingSummaryProps) {
-    return (
-        <aside className="rounded-3xl border border-[#DDE8D8] bg-white p-5 shadow-[0_18px_50px_rgba(79,111,82,0.12)] sm:p-6 lg:sticky lg:top-24">
-            <p className="text-xs font-bold tracking-[0.16em] text-[#4F6F52] uppercase">
-                Ringkasan Booking
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-[#1F2A24]">
-                {roomName}
-            </h2>
-            <p className="mt-1 text-sm font-semibold text-[#5F6B63]">
-                {roomType}
-            </p>
-            <RoomStatusBadge status="available" className="mt-4" />
-
-            <dl className="mt-6 space-y-4 border-y border-slate-100 py-5">
-                <div className="flex items-center justify-between gap-4">
-                    <dt className="text-sm text-[#5F6B63]">Harga per bulan</dt>
-                    <dd className="text-sm font-bold text-[#1F2A24]">
-                        {formatRupiah(price)}
-                    </dd>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                    <dt className="text-sm text-[#5F6B63]">Durasi</dt>
-                    <dd className="text-sm font-bold text-[#1F2A24]">
-                        {duration ? `${duration} bulan` : 'Belum dipilih'}
-                    </dd>
-                </div>
-                <div className="flex items-end justify-between gap-4">
-                    <dt className="text-sm text-[#5F6B63]">Estimasi</dt>
-                    <dd className="text-xl font-bold text-[#4F6F52]">
-                        {duration ? formatRupiah(estimatedCost) : '—'}
-                    </dd>
-                </div>
-            </dl>
-            <div className="mt-5 flex gap-3 text-xs leading-5 text-[#5F6B63]">
-                <Info
-                    className="mt-0.5 size-4 shrink-0 text-[#4F6F52]"
-                    aria-hidden="true"
-                />
-                Estimasi hanya simulasi dan belum termasuk listrik atau biaya
-                tambahan lain.
-            </div>
-        </aside>
     );
 }
 
@@ -647,20 +605,6 @@ function FormField({ id, label, error, className, children }: FormFieldProps) {
     );
 }
 
-type SummaryItemProps = {
-    label: string;
-    value: string;
-};
-
-function SummaryItem({ label, value }: SummaryItemProps) {
-    return (
-        <div className="bg-white p-4 sm:p-5">
-            <dt className="text-xs font-semibold text-[#5F6B63]">{label}</dt>
-            <dd className="mt-1 text-sm font-bold text-[#1F2A24]">{value}</dd>
-        </div>
-    );
-}
-
 function inputClass(hasError: boolean): string {
     return `min-h-12 w-full rounded-xl border bg-white px-4 text-sm font-medium text-[#1F2A24] outline-none transition placeholder:text-slate-400 ${
         hasError
@@ -676,7 +620,10 @@ function validateBookingForm(
 ): BookingErrors {
     const errors: BookingErrors = {};
     const whatsappDigits = form.whatsapp.replace(/\D/g, '');
-    const duration = Number(form.duration);
+    const durationMonths = resolveDurationMonths(
+        form.duration,
+        form.customDuration,
+    );
 
     if (form.fullName.trim().length < 3) {
         errors.fullName = 'Nama lengkap wajib diisi minimal 3 karakter.';
@@ -696,8 +643,32 @@ function validateBookingForm(
         errors.startDate = 'Tanggal mulai tidak boleh sebelum hari ini.';
     }
 
-    if (!duration || duration < minimumStayMonths) {
-        errors.duration = `Pilih durasi minimal ${minimumStayMonths} bulan.`;
+    if (!form.duration) {
+        errors.duration = 'Durasi sewa wajib dipilih.';
+    } else if (form.duration === CUSTOM_DURATION_VALUE) {
+        if (!form.customDuration.trim()) {
+            errors.customDuration = 'Durasi lainnya wajib diisi.';
+        } else if (!/^\d+$/.test(form.customDuration.trim())) {
+            errors.customDuration = 'Durasi harus berupa bilangan bulat.';
+        } else if (durationMonths === null) {
+            errors.customDuration = `Durasi harus antara ${MIN_BOOKING_DURATION_MONTHS}–${MAX_BOOKING_DURATION_MONTHS} bulan.`;
+        }
+    } else if (durationMonths === null) {
+        errors.duration = 'Pilihan durasi tidak valid.';
+    }
+
+    if (durationMonths !== null && durationMonths < minimumStayMonths) {
+        const message = `Durasi minimum kamar ini adalah ${minimumStayMonths} bulan.`;
+
+        if (form.duration === CUSTOM_DURATION_VALUE) {
+            errors.customDuration = message;
+        } else {
+            errors.duration = message;
+        }
+    }
+
+    if (durationMonths !== null && !form.paymentPlan) {
+        errors.paymentPlan = 'Pilih salah satu skema pembayaran.';
     }
 
     if (!form.surveyDate) {
@@ -720,12 +691,4 @@ function getLocalDateInputValue(): string {
     );
 
     return localDate.toISOString().slice(0, 10);
-}
-
-function formatDate(date: string): string {
-    return new Intl.DateTimeFormat('id-ID', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    }).format(new Date(`${date}T00:00:00`));
 }

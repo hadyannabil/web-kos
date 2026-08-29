@@ -45,12 +45,14 @@ export function Navbar({ isAuthenticated, accountUrl }: NavbarProps) {
                 </nav>
 
                 <div className="hidden items-center gap-3 lg:flex">
-                    <Link
-                        href={accountUrl}
-                        className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#1F2A24] transition hover:bg-[#F3F7F1]"
-                    >
-                        {isAuthenticated ? 'Dashboard' : 'Login'}
-                    </Link>
+                    {isAuthenticated && (
+                        <Link
+                            href={accountUrl}
+                            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#1F2A24] transition hover:bg-[#F3F7F1]"
+                        >
+                            Dashboard
+                        </Link>
+                    )}
                     <a
                         href="/#survey"
                         className="inline-flex items-center gap-2 rounded-xl bg-[#4F6F52] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-[#4F6F52]/20 transition hover:-translate-y-0.5 hover:bg-[#2F4F3E]"
@@ -95,14 +97,18 @@ export function Navbar({ isAuthenticated, accountUrl }: NavbarProps) {
                                 {link.label}
                             </a>
                         ))}
-                        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[#DDE8D8] pt-4">
-                            <Link
-                                href={accountUrl}
-                                className="rounded-xl border border-[#DDE8D8] px-4 py-3 text-center text-sm font-semibold text-[#4F6F52]"
-                                onClick={closeMenu}
-                            >
-                                {isAuthenticated ? 'Dashboard' : 'Login'}
-                            </Link>
+                        <div
+                            className={`mt-3 grid gap-3 border-t border-[#DDE8D8] pt-4 ${isAuthenticated ? 'grid-cols-2' : 'grid-cols-1'}`}
+                        >
+                            {isAuthenticated && (
+                                <Link
+                                    href={accountUrl}
+                                    className="rounded-xl border border-[#DDE8D8] px-4 py-3 text-center text-sm font-semibold text-[#4F6F52]"
+                                    onClick={closeMenu}
+                                >
+                                    Dashboard
+                                </Link>
+                            )}
                             <a
                                 href="/#survey"
                                 className="rounded-xl bg-[#4F6F52] px-4 py-3 text-center text-sm font-semibold text-white"
