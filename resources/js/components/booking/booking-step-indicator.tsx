@@ -16,10 +16,12 @@ const steps = [
 
 type BookingStepIndicatorProps = {
     currentStep: 2 | 3;
+    allCompleted?: boolean;
 };
 
 export function BookingStepIndicator({
     currentStep,
+    allCompleted = false,
 }: BookingStepIndicatorProps) {
     return (
         <ol
@@ -27,8 +29,8 @@ export function BookingStepIndicator({
             aria-label="Tahapan pemesanan kamar"
         >
             {steps.map((step) => {
-                const isCompleted = step.number < currentStep;
-                const isActive = step.number === currentStep;
+                const isCompleted = allCompleted || step.number < currentStep;
+                const isActive = !allCompleted && step.number === currentStep;
 
                 return (
                     <li
